@@ -2,164 +2,140 @@
 
 include "common.tact";
 
-let STORAGE_MIN_CONSUMPTION = Coins.minitons(10000000); // 0.01 TON
-let GAS_CONSUMPTION = Coins.minitons(10000000); // 0.01 TON
+let STORAGE_MIN_CONSUMPTION = Coins.militons(10); // 0.01 TON
+let GAS_CONSUMPTION = Coins.militons(10); // 0.01 TON
 
-struct WalletState {
-    val balance: Coins;
-    val address: ContractAddress;
-    val master: ContractAddress;
-    val wallet_code: Cell;
+contract interface Jetton {
+    var balance: Coins;
+    var address: ContractAddress;
+    var master: ContractAddress;
+    var wallet_code: Cell;
+    
+    constructor(address: Address, master: Address, wallet_code: Cell) {
+        self.balance = 0;
+        self.address = address;
+        self.master = master;
+        self.wallet_code = wallet_code;
+    }
 
-    @derive impl Serialize {}
-    @derive impl Deserialize {}
+    msg send_tokens(prefix: 0x0f8a7ea5, body: Transfer);
+    msg receive_tokens(prefix: 0x178d4519, body: InternalTransfer);
+    msg burn_tokens(prefix: 0x595f07bc, body: Burn);
 }
 
-union InternalMsgBody {
-    case Transfer;
-    case InternalTransfer;
-    case Burn;
+contract JettonImpl: Jetton {
+    var balance: Coins;
+    var address: ContractAddress;
+    var master: ContractAddress;
+    var wallet_code: Cell;
 
-    @derive impl Deserialize {}
-}
+    constructor(address: Address, master: Address, wallet_code: Cell) {
+        self.balance = 0;
+        self.address = address;
+        self.master = master;
+        self.wallet_code = wallet_code;
+    }
 
-fn send_tokens(@mut state: WalletState, msg: Transfer, sender: ContractAddress, msg_value: Coins, fwd_fee: Coins) {
-    verify(msg.destination.workchain() == 0, "destination must be local");
-    verify(state.owner == sender, "sender must be owner");
-    verify(state.balance - msg.amount >= 0, "not enough balance");
+    msg bounced_transfer(
+        prefix: 0x0f8a7ea5, 
+        body: Transfer,
+        is_bounced: true,
+    ) {
+        self.balance += body.amount;
+    }
 
-    let fwd_count = if (forward_ton_amount != 0) { 2 } else { 1 };
-    let required_input = msg.forward_ton_amount + 
-        fwd_fee * fwd_count + 
-        2 * GAS_CONSUMPTION + 
-        STORAGE_MIN_CONSUMPTION;
-    verify(msg_value > required_input, "not enough value");
+    msg send_tokens(prefix: 0x0f8a7ea5, transfer: Transfer) {
+        verify(transfer.destination.workchain() == 0, "destination must be local");
+        verify(self.owner == msg.sender, "sender must be owner");
+        verify(self.balance - transfer.amount >= 0, "not enough balance");
 
-    state.balance -= msg.amount;
+        let fwd_count = if (transfer.forward_ton_amount != 0) { 2 } else { 1 };
+        let required_input = transfer.forward_ton_amount + 
+            msg.fwd_fee * msg.fwd_count + 
+            2 * GAS_CONSUMPTION + 
+            STORAGE_MIN_CONSUMPTION;
+        verify(msg.amount > required_input, "not enough value");
 
-    let address_state_init = WalletStateInit.new(msg.destination, state.master, state.wallet_code).serialize();
-    let to_wallet_address = WalletAddress.new(address_state_init);
+        self.balance -= msg.amount;
 
-    RequestBuilder.new()
-        .ihr_disabled()
-        .can_be_bounced()
-        .with_coins(CarryMessageInput{})
-        .state_init_as_ref(address_state_init)
-        .body_as_ref[InternalMsgBody](InternalTransfer {
-            query_id: msg.query_id,
-            amount: msg.amount,
-            from: state.owner,
-            response_address: msg.response_destination,
-            forward_ton_amount: msg.forward_ton_amount,
-            forward_payload: msg.forward_payload,
-        })
-        }.serialize())
-        .send_to(to_wallet_address);
-}
+        let address_state_init = WalletStateInit.new(msg.destination, self.master, self.wallet_code).serialize();
+        let to_wallet_address = WalletAddress.new(address_state_init);
 
-fn receive_tokens(
-    @mut state: WalletState, 
-    msg: InternalTransfer, 
-    sender: ContractAddress, 
-    my_ton_balance: Coins, 
-    fwd_fee: Coins, 
-    msg_value: Coins
-) {
-    verify(
-        sender === state.master || 
-            sender == WalletAddress.from_data(msg.from, state.master, state.wallet_code), 
-        "sender must be master or user wallet"
-    );
-
-    let ton_balance_before_msg = my_ton_balance - msg_value;
-    let storage_fee = STORAGE_MIN_CONSUMPTION - ton_balance_before_msg.min(STORAGE_MIN_CONSUMPTION);
-    let @mut msg_value = msg_value - (storage_fee + GAS_CONSUMPTION);
-
-    if (forward_ton_amount != 0) {
-        msg_value -= (forward_ton_amount + fwd_fee);
-        let payload = msg.forward_payload;
         RequestBuilder.new()
             .ihr_disabled()
-            .pay_transfer_fee_separately()
-            .money(forward_ton_amount)
-            .body(TransferNotification {
+            .can_be_bounced()
+            .with_coins(CarryMessageInput{})
+            .state_init_as_ref(address_state_init)
+            .body_as_ref[InternalMsgBody](InternalTransfer {
                 query_id: msg.query_id,
                 amount: msg.amount,
-                from: msg.from,
-                payload: payload,
+                from: self.owner,
+                response_address: msg.response_destination,
+                forward_ton_amount: msg.forward_ton_amount,
+                forward_payload: msg.forward_payload,
             })
-            .send_to(owner_address);
+            }.serialize())
+            .send_to(to_wallet_address);
     }
 
-    if (!response_address.is_null() && msg_value > 0) {
+    msg receive_tokens(prefix: 0x178d4519, transfer: InternalTransfer) {
+        verify(
+            msg.sender === self.master || 
+                sender == WalletAddress.from_data(msg.from, self.master, self.wallet_code), 
+            "sender must be master or user wallet"
+        );
+
+        let ton_balance_before_msg = self.my_balance() - msg_value;
+        let storage_fee = STORAGE_MIN_CONSUMPTION - ton_balance_before_msg.min(STORAGE_MIN_CONSUMPTION);
+        let @mut msg_value = msg_value - (storage_fee + GAS_CONSUMPTION);
+
+        if (transfer.forward_ton_amount != 0) {
+            msg_value -= (transfer.forward_ton_amount + fwd_fee);
+            let payload = msg.forward_payload;
+            RequestBuilder.new()
+                .ihr_disabled()
+                .pay_transfer_fee_separately()
+                .money(transfer.forward_ton_amount)
+                .body(TransferNotification {
+                    query_id: transfer.query_id,
+                    amount: transfer.amount,
+                    from: msg.from,
+                    payload: payload,
+                })
+                .send_to(self.owner_address);
+        }
+
+        if (!response_address.is_none() && msg_value > 0) {
+            RequestBuilder.new()
+                .ihr_disabled()
+                .ignore_action_phase_errors()
+                .money(msg.amount)
+                .body(Excesses {
+                    query_id: msg.query_id,
+                })
+                .send_to(response_address);
+        }
+    }
+
+    msg burn_tokens(prefix: 0x595f07bc, burn: Burn) {
+        verify(self.owner == msg.sender, "sender must be owner");
+        verify(self.balance - burn.amount >= 0, "not enough balance");
+
+        let required_input = msg.fwd_fee + 2 * GAS_CONSUMPTION;
+        verify(msg.amount < required_input, "not enough value");
+
+        self.balance -= burn.amount;
+
         RequestBuilder.new()
             .ihr_disabled()
-            .ignore_action_phase_errors()
-            .money(msg_value)
-            .body(Excesses {
-                query_id: msg.query_id,
+            .can_be_bounced()
+            .with_coins(CarryMessageInput{})
+            .body_as_ref[InternalMsgBody](BurnNotification {
+                query_id: burn.query_id,
+                amount: burn.amount,
+                from: self.owner,
+                response_address: burn.response_destination,
             })
-            .send_to(response_address);
+            .send_to(self.master);
     }
-}
-
-fn burn_tokens(
-    @mut state: WalletState, 
-    msg: Burn, 
-    sender: ContractAddress, 
-    msg_value: Coins
-    fwd_fee: Coins, 
-) {
-    verify(state.owner == sender, "sender must be owner");
-    verify(state.balance - msg.amount >= 0, "not enough balance");
-
-    let required_input = fwd_fee + 2 * GAS_CONSUMPTION;
-    verify(msg_value > required_input, "not enough value");
-
-    state.balance -= msg.amount;
-
-    RequestBuilder.new()
-        .ihr_disabled()
-        .can_be_bounced()
-        .with_coins(CarryMessageInput{})
-        .body_as_ref[InternalMsgBody](BurnNotification {
-            query_id: msg.query_id,
-            amount: msg.amount,
-            from: state.owner,
-            response_address: msg.response_destination,
-        })
-        .send_to(state.master);
-}
-
-fn on_bounce(
-    @mut state: WalletState,
-    body: Slice
-) {
-    let op = body.load_uint(32);
-    verify(op == InternalTransfer || op == BurnNotification, "invalid bounce operation");
-
-    let query_id = body.load_uint(64);
-    let jetton_amount = body.load_coins();
-    state.balance += jetton_amount;
-}
-
-fn recv_internal(my_balance: Coins, msg_value: Coins, in_msg_full: Cell) {
-    if (in_msg_body.slice_empty()) { // ignore empty messages
-        return;
-    }
-    let msg = InternalMessage[InternalMsgBody].deserialize(in_msg_full);
-    if (msg.info.bounced) {
-        on_bounce(msg.body);
-        return;
-    }
-
-    let mut state = WalletState.deserialize(Global.get_state());
-
-    switch (msg.body) {
-        Transfer => send_tokens(state, msg.body, msg.info.sender, msg_value, msg.info.fwd_fee);
-        InternalTransfer => receive_tokens(state, msg.body, msg.info.sender, my_balance, msg.info.fwd_fee, msg_value);
-        Burn => burn_tokens(state, msg.body, msg.info.sender, msg_value, msg.info.fwd_fee);
-    }
-
-    Globals.set_state(state.serialize());
 }
