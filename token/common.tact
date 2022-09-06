@@ -55,7 +55,7 @@ struct InternalTransfer {
     val query_id: Uint64;
     val amount: Coins;
     val from: ContractAddress;
-    val response_address: ContractAddress;
+    val response_address: ResponseReceiver;
     val forward_ton_amount: Coins;
     val forward_payload: Either[RestSlice, Cell];
 
@@ -92,4 +92,34 @@ struct BurnNotification {
     val response_address: ContractAddress;
 
     @derive impl Serialize {}
+}
+
+contract interface JettonOwner {
+    msg receive_notification(prefix: 0x7362d09c, notification: TransferNotification);
+}
+
+contract interface ResponseReceiver {
+    msg receive_response(prefix: 0xd53276db, response: Excesses);
+}
+
+contract interface Master {
+    msg receive_burn_notification(prefix: 0xd53276db, notification: BurnNotification);
+}
+
+contract interface Jetton {
+    var balance: Coins;
+    var owner: JettonOwner;
+    var master: Master;
+    var wallet_code: Cell;
+
+    init(owner: JettonOwner, master: Master, wallet_code: Cell) {
+        self.balance = 0;
+        self.owner = owner;
+        self.master = master;
+        self.wallet_code = wallet_code;
+    }
+
+    msg send_tokens(prefix: 0x0f8a7ea5, body: Transfer);
+    msg receive_tokens(prefix: 0x178d4519, body: InternalTransfer);
+    msg burn_tokens(prefix: 0x595f07bc, body: Burn);
 }

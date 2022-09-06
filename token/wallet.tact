@@ -5,33 +5,15 @@ include "common.tact";
 let STORAGE_MIN_CONSUMPTION = Coins.militons(10); // 0.01 TON
 let GAS_CONSUMPTION = Coins.militons(10); // 0.01 TON
 
-contract interface Jetton {
-    var balance: Coins;
-    var address: ContractAddress;
-    var master: ContractAddress;
-    var wallet_code: Cell;
-    
-    constructor(address: Address, master: Address, wallet_code: Cell) {
-        self.balance = 0;
-        self.address = address;
-        self.master = master;
-        self.wallet_code = wallet_code;
-    }
-
-    msg send_tokens(prefix: 0x0f8a7ea5, body: Transfer);
-    msg receive_tokens(prefix: 0x178d4519, body: InternalTransfer);
-    msg burn_tokens(prefix: 0x595f07bc, body: Burn);
-}
-
 contract JettonImpl: Jetton {
     var balance: Coins;
-    var address: ContractAddress;
-    var master: ContractAddress;
+    var owner: JettonOwner;
+    var master: Master;
     var wallet_code: Cell;
 
-    constructor(address: Address, master: Address, wallet_code: Cell) {
+    init(owner: JettonOwner, master: Master, wallet_code: Cell) {
         self.balance = 0;
-        self.address = address;
+        self.owner = owner;
         self.master = master;
         self.wallet_code = wallet_code;
     }
@@ -56,26 +38,26 @@ contract JettonImpl: Jetton {
             STORAGE_MIN_CONSUMPTION;
         verify(msg.amount > required_input, "not enough value");
 
-        self.balance -= msg.amount;
+        self.balance -= transfer.amount;
 
-        let address_state_init = WalletStateInit.new(msg.destination, self.master, self.wallet_code).serialize();
-        let to_wallet_address = WalletAddress.new(address_state_init);
-
-        RequestBuilder.new()
-            .ihr_disabled()
-            .can_be_bounced()
-            .with_coins(CarryMessageInput{})
-            .state_init_as_ref(address_state_init)
-            .body_as_ref[InternalMsgBody](InternalTransfer {
-                query_id: msg.query_id,
-                amount: msg.amount,
-                from: self.owner,
-                response_address: msg.response_destination,
-                forward_ton_amount: msg.forward_ton_amount,
-                forward_payload: msg.forward_payload,
-            })
-            }.serialize())
-            .send_to(to_wallet_address);
+        Jetton.init(
+            msg.destination,
+            self.master,
+            self.wallet_code,
+            code: self.wallet_code
+        ).receive_tokens(InternalTransfer {
+            query_id: msg.query_id,
+            amount: msg.amount,
+            from: self.owner,
+            response_address: msg.response_destination,
+            forward_ton_amount: msg.forward_ton_amount,
+            forward_payload: msg.forward_payload,
+        })
+        .send(
+            ihr_disabled: true,
+            can_be_bounced: true,
+            carry_message_input: true,
+        );
     }
 
     msg receive_tokens(prefix: 0x178d4519, transfer: InternalTransfer) {
@@ -92,28 +74,25 @@ contract JettonImpl: Jetton {
         if (transfer.forward_ton_amount != 0) {
             msg_value -= (transfer.forward_ton_amount + fwd_fee);
             let payload = msg.forward_payload;
-            RequestBuilder.new()
-                .ihr_disabled()
-                .pay_transfer_fee_separately()
-                .money(transfer.forward_ton_amount)
-                .body(TransferNotification {
+            self.owner
+                .receive_notification(TransferNotification {
                     query_id: transfer.query_id,
                     amount: transfer.amount,
                     from: msg.from,
                     payload: payload,
                 })
-                .send_to(self.owner_address);
+                .send(ihr_disabled: true, pay_transfer_fee_separately: true);
         }
 
-        if (!response_address.is_none() && msg_value > 0) {
-            RequestBuilder.new()
-                .ihr_disabled()
-                .ignore_action_phase_errors()
-                .money(msg.amount)
-                .body(Excesses {
-                    query_id: msg.query_id,
-                })
-                .send_to(response_address);
+        if (!transfer.response_address.is_none() && msg_value > 0) {
+            transfer
+                .response_address
+                .receive_response(Excesses { query_id: msg.query_id})
+                .send(
+                    money: msg.amount, 
+                    ihr_disabled: true, 
+                    ignore_action_phase_errors: true
+                );
         }
     }
 
@@ -126,16 +105,17 @@ contract JettonImpl: Jetton {
 
         self.balance -= burn.amount;
 
-        RequestBuilder.new()
-            .ihr_disabled()
-            .can_be_bounced()
-            .with_coins(CarryMessageInput{})
-            .body_as_ref[InternalMsgBody](BurnNotification {
+        self.master
+            .receive_burn_notification(BurnNotification {
                 query_id: burn.query_id,
                 amount: burn.amount,
                 from: self.owner,
                 response_address: burn.response_destination,
             })
-            .send_to(self.master);
+            .send(
+                ihr_disabled: true, 
+                can_be_bounced: true,
+                carry_message_input: true,
+            );
     }
 }
