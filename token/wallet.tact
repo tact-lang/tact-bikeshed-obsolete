@@ -69,7 +69,7 @@ contract JettonImpl: Jetton {
 
         let ton_balance_before_msg = self.my_balance() - msg_value;
         let storage_fee = STORAGE_MIN_CONSUMPTION - ton_balance_before_msg.min(STORAGE_MIN_CONSUMPTION);
-        let @mut msg_value = msg_value - (storage_fee + GAS_CONSUMPTION);
+        let mut msg_value = msg_value - (storage_fee + GAS_CONSUMPTION);
 
         if (transfer.forward_ton_amount != 0) {
             msg_value -= (transfer.forward_ton_amount + fwd_fee);
