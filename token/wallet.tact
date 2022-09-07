@@ -18,15 +18,11 @@ contract JettonImpl: Jetton {
         self.wallet_code = wallet_code;
     }
 
-    msg bounced_transfer(
-        prefix: 0x0f8a7ea5, 
-        body: Transfer,
-        is_bounced: true,
-    ) {
+    bounced transfer#0f8a7ea5(body: Transfer) {
         self.balance += body.amount;
     }
 
-    msg send_tokens(prefix: 0x0f8a7ea5, transfer: Transfer) {
+    internal send_tokens#0f8a7ea5(transfer: Transfer) {
         verify(transfer.destination.workchain() == 0, "destination must be local");
         verify(self.owner == msg.sender, "sender must be owner");
         verify(self.balance - transfer.amount >= 0, "not enough balance");
@@ -60,7 +56,7 @@ contract JettonImpl: Jetton {
         );
     }
 
-    msg receive_tokens(prefix: 0x178d4519, transfer: InternalTransfer) {
+    internal receive_tokens#178d4519(transfer: InternalTransfer) {
         verify(
             msg.sender === self.master || 
                 sender == WalletAddress.from_data(msg.from, self.master, self.wallet_code), 
@@ -96,7 +92,7 @@ contract JettonImpl: Jetton {
         }
     }
 
-    msg burn_tokens(prefix: 0x595f07bc, burn: Burn) {
+    internal burn_tokens#595f07bc(burn: Burn) {
         verify(self.owner == msg.sender, "sender must be owner");
         verify(burn.amount <= self.balance, "insufficient balance");
 

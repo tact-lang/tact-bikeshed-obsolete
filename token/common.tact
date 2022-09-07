@@ -97,15 +97,15 @@ struct BurnNotification {
 }
 
 contract interface JettonOwner {
-    msg receive_notification(prefix: 0x7362d09c, notification: TransferNotification);
+    internal receive_notification#7362d09c(notification: TransferNotification);
 }
 
 contract interface ResponseReceiver {
-    msg receive_response(prefix: 0xd53276db, response: Excesses);
+    internal receive_response#d53276db(response: Excesses);
 }
 
 contract interface Master {
-    msg receive_burn_notification(prefix: 0xd53276db, notification: BurnNotification);
+    internal receive_burn_notification#d53276db(notification: BurnNotification);
 }
 
 contract interface Jetton {
@@ -121,7 +121,7 @@ contract interface Jetton {
         self.wallet_code = wallet_code;
     }
 
-    msg send_tokens(prefix: 0x0f8a7ea5, body: Transfer);
-    msg receive_tokens(prefix: 0x178d4519, body: InternalTransfer);
-    msg burn_tokens(prefix: 0x595f07bc, body: Burn);
+    internal send_tokens#0f8a7ea5(body: Transfer);
+    internal receive_tokens#178d4519(body: InternalTransfer);
+    internal burn_tokens#595f07bc(body: Burn);
 }
