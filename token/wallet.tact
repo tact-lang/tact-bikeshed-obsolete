@@ -6,7 +6,7 @@ let STORAGE_MIN_CONSUMPTION = Coins.militons(10); // 0.01 TON
 let GAS_CONSUMPTION = Coins.militons(10); // 0.01 TON
 
 contract JettonImpl: Jetton {
-    var balance: Coins;
+    var balance: JettonAmount;
     var owner: JettonOwner;
     var master: Master;
     var wallet_code: Cell;

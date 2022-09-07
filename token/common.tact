@@ -1,5 +1,7 @@
 // WARNING: it may contains logic errors.
 
+let JettonAmount = newtype(Coins);
+
 struct WalletStateInit {
     val _unused1: Uint[2]; // split_depth and special
     val code: Maybe[RefCell];
@@ -41,7 +43,7 @@ struct WalletAddress {
 
 struct Transfer {
     val query_id: Uint64;
-    val amount: Coins;
+    val amount: JettonAmount;
     val destination: ContractAddress;
     val response_destination: ContractAddress;
     val custom_payload: Maybe[Cell];
@@ -53,7 +55,7 @@ struct Transfer {
 
 struct InternalTransfer {
     val query_id: Uint64;
-    val amount: Coins;
+    val amount: JettonAmount;
     val from: ContractAddress;
     val response_address: ResponseReceiver;
     val forward_ton_amount: Coins;
@@ -64,7 +66,7 @@ struct InternalTransfer {
 
 struct Burn {
     val query_id: Uint64;
-    val amount: Coins;
+    val amount: JettonAmount;
     val response_destination: ContractAddress;
 
     @derive impl Deserialize {}
@@ -72,7 +74,7 @@ struct Burn {
 
 struct TransferNotification {
     val query_id: Uint64;
-    val amount: Coins;
+    val amount: JettonAmount;
     val from: ContractAddress;
     val payload: Either[RestSlice, Cell];
 
@@ -87,7 +89,7 @@ struct Excesses {
 
 struct BurnNotification {
     val query_id: Uint64;
-    val amount: Coins;
+    val amount: JettonAmount;
     val from: ContractAddress;
     val response_address: ContractAddress;
 
@@ -107,7 +109,7 @@ contract interface Master {
 }
 
 contract interface Jetton {
-    var balance: Coins;
+    var balance: JettonAmount;
     var owner: JettonOwner;
     var master: Master;
     var wallet_code: Cell;
