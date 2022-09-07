@@ -58,8 +58,8 @@ contract JettonImpl: Jetton {
 
     internal receive_tokens#178d4519(transfer: InternalTransfer) {
         verify(
-            msg.sender === self.master || 
-                sender == WalletAddress.from_data(msg.from, self.master, self.wallet_code), 
+            msg.sender === self.master ||
+                sender == self.compute_wallet_address(msg.from),
             "sender must be master or user wallet"
         );
 
@@ -113,5 +113,9 @@ contract JettonImpl: Jetton {
                 can_be_bounced: true,
                 carry_message_input: true,
             );
+    }
+
+    fn compute_wallet_address(owner: ContractAddress) -> WalletAddress {
+        WalletAddress.from_data(owner, self.master, self.wallet_code)
     }
 }
