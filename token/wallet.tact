@@ -63,50 +63,50 @@ contract JettonImpl: Jetton {
             "sender must be master or user wallet"
         );
 
-        let ton_balance_before_msg = self.my_balance() - msg_value;
+        let ton_balance_before_msg = self.my_balance() - msg.amount;
         let storage_fee = STORAGE_MIN_CONSUMPTION - ton_balance_before_msg.min(STORAGE_MIN_CONSUMPTION);
-        let mut msg_value = msg_value - (storage_fee + GAS_CONSUMPTION);
+        let mut msg_value = msg.amount - (storage_fee + GAS_CONSUMPTION);
 
         if (transfer.forward_ton_amount != 0) {
             msg_value -= (transfer.forward_ton_amount + fwd_fee);
             let payload = msg.forward_payload;
             self.owner
-                .receive_notification(TransferNotification {
-                    query_id: transfer.query_id,
-                    amount: transfer.amount,
-                    from: msg.from,
-                    payload: payload,
-                })
+                .notify_transfer(
+                    transfer.query_id,
+                    transfer.amount,
+                    msg.from,
+                    payload,
+                )
                 .send(ihr_disabled: true, pay_transfer_fee_separately: true);
         }
 
         if (!transfer.response_address.is_none() && msg_value > 0) {
             transfer
                 .response_address
-                .receive_response(Excesses { query_id: msg.query_id})
+                .excesses(msg.query_id)
                 .send(
-                    money: msg.amount, 
-                    ihr_disabled: true, 
+                    money: msg.amount,
+                    ihr_disabled: true,
                     ignore_action_phase_errors: true
                 );
         }
     }
 
-    internal burn_tokens#595f07bc(burn: Burn) {
+    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: ContractAddress) {
         verify(self.owner == msg.sender, "sender must be owner");
-        verify(burn.amount <= self.balance, "insufficient balance");
+        verify(burn_amount <= self.balance, "insufficient balance");
 
         let required_input = msg.fwd_fee + 2 * GAS_CONSUMPTION;
         verify(msg.amount < required_input, "not enough value");
 
-        self.balance -= burn.amount;
+        self.balance -= burn_amount;
 
         self.master
             .receive_burn_notification(BurnNotification {
-                query_id: burn.query_id,
-                amount: burn.amount,
+                query_id,
+                amount: burn_amount,
                 from: self.owner,
-                response_address: burn.response_destination,
+                response_address: response_destination,
             })
             .send(
                 ihr_disabled: true, 

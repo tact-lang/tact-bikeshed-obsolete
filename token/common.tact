@@ -64,44 +64,17 @@ struct InternalTransfer {
     @derive impl Deserialize {}
 }
 
-struct Burn {
-    val query_id: Uint64;
-    val amount: JettonAmount;
-    val response_destination: ContractAddress;
-
-    @derive impl Deserialize {}
-}
-
-struct TransferNotification {
-    val query_id: Uint64;
-    val amount: JettonAmount;
-    val from: ContractAddress;
-    val payload: Either[RestSlice, Cell];
-
-    @derive impl Serialize {}
-}
-
-struct Excesses {
-    val query_id: Uint64;
-
-    @derive impl Serialize {}
-}
-
-struct BurnNotification {
-    val query_id: Uint64;
-    val amount: JettonAmount;
-    val from: ContractAddress;
-    val response_address: ContractAddress;
-
-    @derive impl Serialize {}
-}
-
 contract interface JettonOwner {
-    internal receive_notification#7362d09c(notification: TransferNotification);
+    internal notify_transfer#7362d09c(
+        query_id: Uint64,
+        amount: JettonAmount,
+        from: ContractAddress,
+        payload: Either[RestSlice, Cell],
+    );
 }
 
 contract interface ResponseReceiver {
-    internal receive_response#d53276db(response: Excesses);
+    internal excesses#d53276db(query_id: Uint64);
 }
 
 contract interface Master {
@@ -123,5 +96,5 @@ contract interface Jetton {
 
     internal send_tokens#0f8a7ea5(body: Transfer);
     internal receive_tokens#178d4519(body: InternalTransfer);
-    internal burn_tokens#595f07bc(body: Burn);
+    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: ContractAddress);
 }
