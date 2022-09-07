@@ -2,8 +2,8 @@
 
 include "common.tact";
 
-let STORAGE_MIN_CONSUMPTION = Coins.militons(10); // 0.01 TON
-let GAS_CONSUMPTION = Coins.militons(10); // 0.01 TON
+let STORAGE_MIN_CONSUMPTION = Coins.millitons(10); // 0.01 TON
+let GAS_CONSUMPTION = Coins.millitons(10); // 0.01 TON
 
 contract JettonImpl: Jetton {
     var balance: JettonAmount;
