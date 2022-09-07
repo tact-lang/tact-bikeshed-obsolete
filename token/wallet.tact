@@ -5,6 +5,13 @@ include "common.tact";
 let STORAGE_MIN_CONSUMPTION = Coins.millitons(10); // 0.01 TON
 let GAS_CONSUMPTION = Coins.millitons(10); // 0.01 TON
 
+struct WalletData {
+    var balance: JettonAmount;
+    var owner: JettonOwner;
+    var master: Master;
+    var wallet_code: Cell;
+}
+
 contract JettonImpl: Jetton {
     var balance: JettonAmount;
     var owner: JettonOwner;
@@ -117,5 +124,14 @@ contract JettonImpl: Jetton {
 
     fn compute_wallet_address(owner: ContractAddress) -> WalletAddress {
         WalletAddress.from_data(owner, self.master, self.wallet_code)
+    }
+
+    get wallet_data() -> WalletData {
+        WalletData {
+            balance: self.balance,
+            owner: self.owner,
+            master: self.master,
+            wallet_code: self.wallet_code,
+        }
     }
 }
