@@ -98,7 +98,7 @@ contract JettonImpl: Jetton {
 
     msg burn_tokens(prefix: 0x595f07bc, burn: Burn) {
         verify(self.owner == msg.sender, "sender must be owner");
-        verify(self.balance - burn.amount >= 0, "not enough balance");
+        verify(burn.amount <= self.balance, "insufficient balance");
 
         let required_input = msg.fwd_fee + 2 * GAS_CONSUMPTION;
         verify(msg.amount < required_input, "not enough value");
