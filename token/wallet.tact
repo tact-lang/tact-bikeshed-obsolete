@@ -51,7 +51,7 @@ contract JettonImpl: Jetton {
 
         self.balance -= jetton_amount;
 
-        Jetton.init(
+        send(InboundCoins) Jetton.init(
             msg.destination,
             self.master,
             self.wallet_code,
@@ -63,11 +63,6 @@ contract JettonImpl: Jetton {
             response_address: response_destination,
             forward_ton_amount,
             forward_payload,
-        )
-        .send(
-            ihr_disabled: true,
-            can_be_bounced: true,
-            carry_message_input: true,
         );
     }
 
@@ -92,24 +87,25 @@ contract JettonImpl: Jetton {
         if (forward_ton_amount != 0) {
             msg_value -= (forward_ton_amount + fwd_fee);
             let payload = msg.forward_payload;
+            send(PayFee)
             self.owner
                 .notify_transfer(
                     query_id,
                     jetton_amount,
                     msg.from,
                     payload,
-                )
-                .send(ihr_disabled: true, pay_transfer_fee_separately: true);
+                    bounceable: false,
+                );
         }
 
         if (!response_address.is_none() && msg_value > 0) {
+            send(IgnoreIfError)
             jetton_amount
                 .response_address
-                .excesses(msg.query_id)
-                .send(
-                    money: msg.amount,
-                    ihr_disabled: true,
-                    ignore_action_phase_errors: true
+                .excesses(
+                    msg.query_id,
+                    amount: msg.amount,
+                    bounceable: false
                 );
         }
     }
@@ -123,17 +119,13 @@ contract JettonImpl: Jetton {
 
         self.balance -= burn_amount;
 
+        send(InboundCoins)
         self.master
             .receive_burn_notification(
                 query_id,
                 burn_amount,
                 self.owner,
                 response_destination,
-            )
-            .send(
-                ihr_disabled: true, 
-                can_be_bounced: true,
-                carry_message_input: true,
             );
     }
 
