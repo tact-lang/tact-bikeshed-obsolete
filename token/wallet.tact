@@ -29,33 +29,41 @@ contract JettonImpl: Jetton {
         self.balance += body.amount;
     }
 
-    internal send_tokens#0f8a7ea5(transfer: Transfer) {
-        verify(transfer.destination.workchain() == 0, "destination must be local");
+    internal send_tokens#0f8a7ea5(
+        query_id: Uint64,
+        jetton_amount: JettonAmount,
+        destination: ContractAddress,
+        response_destination: ContractAddress,
+        custom_payload: Maybe[Cell],
+        forward_ton_amount: Coins,
+        forward_payload: Either[RestSlice, Cell],
+    ) {
+        verify(destination.workchain() == 0, "destination must be local");
         verify(self.owner == msg.sender, "sender must be owner");
-        verify(self.balance - transfer.amount >= 0, "not enough balance");
+        verify(self.balance - jetton_amount >= 0, "not enough balance");
 
-        let fwd_count = if (transfer.forward_ton_amount != 0) { 2 } else { 1 };
-        let required_input = transfer.forward_ton_amount + 
+        let fwd_count = if (forward_ton_amount != 0) { 2 } else { 1 };
+        let required_input = forward_ton_amount + 
             msg.fwd_fee * msg.fwd_count + 
             2 * GAS_CONSUMPTION + 
             STORAGE_MIN_CONSUMPTION;
         verify(msg.amount > required_input, "not enough value");
 
-        self.balance -= transfer.amount;
+        self.balance -= jetton_amount;
 
         Jetton.init(
             msg.destination,
             self.master,
             self.wallet_code,
             code: self.wallet_code
-        ).receive_tokens(InternalTransfer {
-            query_id: msg.query_id,
-            amount: msg.amount,
+        ).receive_tokens(
+            query_id,
+            amount: jetton_amount,
             from: self.owner,
-            response_address: msg.response_destination,
-            forward_ton_amount: msg.forward_ton_amount,
-            forward_payload: msg.forward_payload,
-        })
+            response_address: response_destination,
+            forward_ton_amount,
+            forward_payload,
+        )
         .send(
             ihr_disabled: true,
             can_be_bounced: true,
@@ -63,7 +71,14 @@ contract JettonImpl: Jetton {
         );
     }
 
-    internal receive_tokens#178d4519(transfer: InternalTransfer) {
+    internal receive_tokens#178d4519(
+        query_id: Uint64,
+        jetton_amount: JettonAmount,
+        from: ContractAddress,
+        response_address: Address,
+        forward_ton_amount: Coins,
+        forward_payload: Either[RestSlice, Cell],
+    ) {
         verify(
             msg.sender === self.master ||
                 sender == self.compute_wallet_address(msg.from),
@@ -74,21 +89,21 @@ contract JettonImpl: Jetton {
         let storage_fee = STORAGE_MIN_CONSUMPTION - ton_balance_before_msg.min(STORAGE_MIN_CONSUMPTION);
         let mut msg_value = msg.amount - (storage_fee + GAS_CONSUMPTION);
 
-        if (transfer.forward_ton_amount != 0) {
-            msg_value -= (transfer.forward_ton_amount + fwd_fee);
+        if (forward_ton_amount != 0) {
+            msg_value -= (forward_ton_amount + fwd_fee);
             let payload = msg.forward_payload;
             self.owner
                 .notify_transfer(
-                    transfer.query_id,
-                    transfer.amount,
+                    query_id,
+                    jetton_amount,
                     msg.from,
                     payload,
                 )
                 .send(ihr_disabled: true, pay_transfer_fee_separately: true);
         }
 
-        if (!transfer.response_address.is_none() && msg_value > 0) {
-            transfer
+        if (!response_address.is_none() && msg_value > 0) {
+            jetton_amount
                 .response_address
                 .excesses(msg.query_id)
                 .send(
@@ -109,12 +124,12 @@ contract JettonImpl: Jetton {
         self.balance -= burn_amount;
 
         self.master
-            .receive_burn_notification(BurnNotification {
+            .receive_burn_notification(
                 query_id,
-                amount: burn_amount,
-                from: self.owner,
-                response_address: response_destination,
-            })
+                burn_amount,
+                self.owner,
+                response_destination,
+            )
             .send(
                 ihr_disabled: true, 
                 can_be_bounced: true,
