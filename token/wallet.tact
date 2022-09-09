@@ -99,9 +99,8 @@ contract JettonImpl: Jetton {
         }
 
         if (!response_address.is_none() && msg_value > 0) {
-            send(IgnoreIfError)
-            jetton_amount
-                .response_address
+            send(IgnoreErrors)
+            response_address
                 .excesses(
                     msg.query_id,
                     amount: msg.amount,
