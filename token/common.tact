@@ -6,7 +6,7 @@ interface JettonOwner {
     internal notify_transfer#7362d09c(
         query_id: Uint64,
         amount: JettonAmount,
-        from: ContractAddress,
+        from: Address,
         payload: Either[RestSlice, Cell],
     );
 }
@@ -20,7 +20,7 @@ interface Master {
         query_id: Uint64,
         amount: JettonAmount,
         from: JettonOwner,
-        response_address: ContractAddress,
+        response_address: Address,
     );
 }
 
@@ -40,8 +40,8 @@ interface Jetton {
     internal send_tokens#0f8a7ea5(
         query_id: Uint64,
         amount: JettonAmount,
-        destination: ContractAddress,
-        response_destination: ContractAddress,
+        destination: Address,
+        response_destination: Address,
         custom_payload: Maybe[Cell],
         forward_ton_amount: Coins,
         forward_payload: Either[RestSlice, Cell],
@@ -49,10 +49,10 @@ interface Jetton {
     internal receive_tokens#178d4519(
         query_id: Uint64,
         amount: JettonAmount,
-        from: ContractAddress,
-        response_address: Address,
+        from: Address,
+        response_address: MaybeAddress,
         forward_ton_amount: Coins,
         forward_payload: Either[RestSlice, Cell],
     );
-    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: ContractAddress);
+    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: Address);
 }

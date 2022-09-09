@@ -32,8 +32,8 @@ contract JettonImpl: Jetton {
     internal send_tokens#0f8a7ea5(
         query_id: Uint64,
         jetton_amount: JettonAmount,
-        destination: ContractAddress,
-        response_destination: ContractAddress,
+        destination: Address,
+        response_destination: Address,
         custom_payload: Maybe[Cell],
         forward_ton_amount: Coins,
         forward_payload: Either[RestSlice, Cell],
@@ -69,8 +69,8 @@ contract JettonImpl: Jetton {
     internal receive_tokens#178d4519(
         query_id: Uint64,
         jetton_amount: JettonAmount,
-        from: ContractAddress,
-        response_address: Address,
+        from: Address,
+        response_address: MaybeAddress,
         forward_ton_amount: Coins,
         forward_payload: Either[RestSlice, Cell],
     ) {
@@ -110,7 +110,7 @@ contract JettonImpl: Jetton {
         }
     }
 
-    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: ContractAddress) {
+    internal burn_tokens#595f07bc(query_id: Uint64, burn_amount: JettonAmount, response_destination: Address) {
         verify(self.owner == msg.sender, "sender must be owner");
         verify(burn_amount <= self.balance, "insufficient balance");
 
@@ -129,7 +129,7 @@ contract JettonImpl: Jetton {
             );
     }
 
-    fn compute_wallet_address(owner: ContractAddress) -> ContractAddress {
+    fn compute_wallet_address(owner: Address) -> Address {
         Jetton.init(owner, self.master, self.wallet_code).address()
     }
 
