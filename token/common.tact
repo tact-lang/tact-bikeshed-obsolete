@@ -2,7 +2,7 @@
 
 let JettonAmount = newtype(Coins);
 
-contract interface JettonOwner {
+interface JettonOwner {
     internal notify_transfer#7362d09c(
         query_id: Uint64,
         amount: JettonAmount,
@@ -11,11 +11,11 @@ contract interface JettonOwner {
     );
 }
 
-contract interface ResponseReceiver {
+interface ResponseReceiver {
     internal excesses#d53276db(query_id: Uint64);
 }
 
-contract interface Master {
+interface Master {
     internal receive_burn_notification#d53276db(
         query_id: Uint64,
         amount: JettonAmount,
@@ -24,7 +24,7 @@ contract interface Master {
     );
 }
 
-contract interface Jetton {
+interface Jetton {
     var balance: JettonAmount;
     var owner: JettonOwner;
     var master: Master;
