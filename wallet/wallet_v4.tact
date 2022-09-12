@@ -9,7 +9,7 @@ contract Wallet {
     var seqno: Uint32
     var subwallet: Uint32
     var pubkey: Pubkey
-    var plugins: HashSet[Plugin]
+    var plugins: Set[Plugin]
 
     bounced default() {
         // ignore bounced messages
