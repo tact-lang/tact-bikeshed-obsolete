@@ -61,7 +61,7 @@ contract Wallet {
         }
     }
 
-    external destroy_and_install_plugin#1(
+    external deploy_and_install_plugin#1(
         workchain: Int8,
         balance: Coins,
         state_init: Ref[StateInit],
