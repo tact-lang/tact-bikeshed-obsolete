@@ -25,6 +25,9 @@ contract Wallet {
         requested_extra: ExtraCurrencies,
         msg.sender: Plugin,
     ) {
+        if !this.plugins.contains(msg.sender) {
+            return;
+        }
         verify(self.balance() - msg.amount >= requested_amount, "Not enough funds");
 
         send(InboundCoins)
@@ -36,6 +39,9 @@ contract Wallet {
     }
 
     internal remove_plugin#64737472(query_id: Uint64, msg.sender: Plugin) {
+        if !this.plugins.contains(msg.sender) {
+            return;
+        }
         self.plugins.remove(msg.sender);
 
         if msg.bounceable {
