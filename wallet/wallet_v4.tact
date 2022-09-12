@@ -36,7 +36,7 @@ contract Wallet {
     }
 
     internal remove_plugin#64737472(query_id: Uint64, msg.sender: Plugin) {
-        self.remove_plugin_from_list(msg.sender);
+        self.plugins.remove(msg.sender);
 
         if msg.bounceable {
             send(InboundCoins) msg.sender.notify_removed(query_id);
@@ -66,7 +66,7 @@ contract Wallet {
         balance: Coins,
         state_init: Ref[StateInit],
         body: Cell,
-    ) -> Slice {
+    ) {
         let address = AddressStd.new(workchain, state_init.hash());
 
         send(PayFee + IgnoreErrors)
@@ -76,46 +76,16 @@ contract Wallet {
                 msg.state_init: state_init,
             );
 
-        self.add_plugin(address);
+        self.plugins.insert(address);
     }
 
-    external install_plugin#2(
-        plugin: Plugin,
-        amount: Coins,
-        query_id: Uint64,
-    ) -> Slice {
-        let address = AddressStd.new(workchain, state_init.hash());
-
-        self.add_plugin(address);
-
-        send(PayFee + IgnoreErrors)
-            plugin.notify_installed(
-                query_id,
-                msg.amount: balance,
-            );
+    external install_plugin#2(plugin: Plugin, amount: Coins, query_id: Uint64) {
+        self.plugins.insert(plugin);
+        send(PayFee + IgnoreErrors) plugin.notify_installed(query_id, msg.amount: balance);
     }
 
-    external remove_plugin#3(
-        plugin: Plugin,
-        query_id: Uint64,
-    ) -> Slice {
-        self.remove_plugin_from_list(plugin);
-
-        send(PayFee + IgnoreErrors)
-            plugin.notify_removed(
-                query_id,
-            );
-    }
-
-    fn get_plugin(addr: Address) -> Option[Plugin] {
-        self.plugins.get(addr.to_std())
-    }
-
-    fn remove_plugin_from_list(addr: Address) {
-        self.plugins.remove(addr.to_std())
-    }
-
-    fn add_plugin(addr: Address) {
-        self.plugins.insert(addr.to_std())
+    external remove_plugin#3(plugin: Plugin, query_id: Uint64) {
+        self.plugins.remove(plugin);
+        send(PayFee + IgnoreErrors) plugin.notify_removed(query_id);
     }
 }
