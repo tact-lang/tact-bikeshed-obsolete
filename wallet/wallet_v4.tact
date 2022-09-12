@@ -28,7 +28,9 @@ contract Wallet {
         if !this.plugins.contains(msg.sender) {
             return;
         }
-        verify(self.balance() - msg.amount >= requested_amount, "Not enough funds");
+        // We subtract the incoming amount because it's already included in the balance
+        // and we are sending it back alongside the requested_amount.
+        verify(requested_amount <= self.balance()-msg.amount, "Not enough funds");
 
         send(InboundCoins)
         msg.sender.requested_funds(
