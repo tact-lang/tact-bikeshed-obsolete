@@ -52,8 +52,8 @@ contract Wallet {
     }
 
     external pre_condition(body: Slice) -> Slice {
-        let sign = body.read(Signature);
-        if sign.verify(body, self.pubkey) {
+        let sig = body.read(Signature);
+        if sig.verify(body, self.pubkey) {
             self.accept();
             self.seqno += 1;
             self.commit();
