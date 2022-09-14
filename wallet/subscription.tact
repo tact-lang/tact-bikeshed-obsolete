@@ -35,7 +35,7 @@ contract SubscriptionPlugin: Plugin {
 
     internal default() {
         send(CarryMessageBalance) 
-        self.benefeciary.fallback(
+        self.beneficiary.fallback(
             msg.bounceable: false,
             msg.extra: self.extra(),
         );
