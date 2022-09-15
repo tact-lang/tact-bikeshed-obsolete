@@ -34,14 +34,10 @@ contract SubscriptionPlugin: Plugin {
     var subscription_id: Uint32;
 
     internal default() {
-        send(CarryMessageBalance) 
-        self.beneficiary.fallback(
-            msg.bounceable: false,
-            msg.extra: self.extra(),
-        );
+        self.send_fallback_message();
     }
 
-    internal destruct#0x64737472(query_id: Uint64) {
+    internal destruct#64737472(query_id: Uint64) {
         if msg.sender == self.benefeciary {
             let amount_gas = Gas.units(10_000, workchain: self.wallet.workchain());
 
@@ -52,39 +48,16 @@ contract SubscriptionPlugin: Plugin {
                 msg.bounceable: false,
             );
 
-            self.reserve_at_most(Coins.nanotons(67_108_864));
-
             self.send_destructured_message();
         } else if msg.sender == self.wallet {
             self.send_destructured_message();
         } else {
-            self.send_destructured_message();
+            self.send_fallback_message();
         }
     }
 
-    internal destruct#0x64737472(query_id: Uint64) {
-        verify(msg.sender == benefeciary, "Only benefeciary can destroy the subscription");
-
-        let amount_gas = Gas.units(10_000, workchain: self.wallet.workchain());
-
-        send(InboundCoins + IgnoreErrors) 
-        self.wallet.remove_plugin(
-            self.logical_time(),
-            msg.gas: amount_gas,
-            msg.bounceable: false,
-        );
-
-        self.send_destructured_message();
-    }
-
     internal forward_funds#??????() {
-        self.reserve_at_most(Coins.nanotons(67_108_864));
-        
-        send(CarryMessageBalance) 
-        self.benefeciary.fallback(
-            msg.bounceable: false,
-            msg.extra: self.extra(),
-        );
+        self.send_fallback_message();
     }
 
     internal requested_funds#f06c7567(query_id: Uint64) {
@@ -109,10 +82,8 @@ contract SubscriptionPlugin: Plugin {
         let last_timeslot = (self.last_payment_time - self.start_time) / self.period;
         let cur_timeslot = (self.now() - self.start_time) / self.period;
 
-        // throw_unless(30, (cur_timeslot > last_timeslot) & (last_request_time + timeout < now())); ;; too early request
-
-        verify(last_timeslot < cur_timeslot, "Last payment time is greater than current time");
-        self.accept();
+        verify(last_timeslot < cur_timeslot, "Too early payment request");
+        self.accept_message();
 
         if self.failed_attempts >= 3 {
             let amount_gas = Gas.units(10_000, workchain: self.wallet.workchain());
@@ -123,8 +94,6 @@ contract SubscriptionPlugin: Plugin {
                 msg.gas: amount_gas,
                 msg.bounceable: false,
             );
-
-            self.reserve_at_most(Coins.nanotons(67_108_864));
 
             self.send_destructured_message();
         } else {
@@ -142,7 +111,7 @@ contract SubscriptionPlugin: Plugin {
     }
 
     get subscription_data() -> Self.Storage {
-        Self.Storage(
+        Self.Storage {
             wallet: self.wallet,
             benefeciary: self.benefeciary,
             amount: self.amount,
@@ -153,7 +122,17 @@ contract SubscriptionPlugin: Plugin {
             last_request_time: self.last_request_time,
             failed_attempts: self.failed_attempts,
             subscription_id: self.subscription_id,
-        )
+        }
+    }
+
+    fn send_fallback_message() {
+        self.reserve_at_most(Coins.nanotons(67_108_864));
+
+        send(WalletBalance)
+        self.benefeciary.fallback(
+            msg.bounceable: false,
+            msg.extra: self.extra(),
+        );
     }
 
     fn send_destructured_message() {
