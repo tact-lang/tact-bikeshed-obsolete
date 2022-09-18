@@ -23,7 +23,7 @@ interface Beneficiary {
 
 contract SubscriptionPlugin: Plugin {
     var wallet: Wallet;
-    var benefeciary: Beneficiary;
+    var beneficiary: Beneficiary;
     var amount: Coins;
     var period: Uint32;
     var start_time: Uint32;
@@ -38,7 +38,7 @@ contract SubscriptionPlugin: Plugin {
     }
 
     internal destruct#64737472(query_id: Uint64) {
-        if msg.sender == self.benefeciary {
+        if msg.sender == self.beneficiary {
             let amount_gas = Gas.units(10_000, workchain: self.wallet.workchain());
 
             send(InboundCoins + IgnoreErrors)
@@ -71,7 +71,7 @@ contract SubscriptionPlugin: Plugin {
             self.failed_attempts = 0;
 
             send(CarryMessageBalance) 
-            self.benefeciary.subscription(
+            self.beneficiary.subscription(
                 msg.bounceable: false,
                 msg.extra: self.extra(),
             );
@@ -113,7 +113,7 @@ contract SubscriptionPlugin: Plugin {
     get subscription_data() -> Self.Storage {
         Self.Storage {
             wallet: self.wallet,
-            benefeciary: self.benefeciary,
+            beneficiary: self.beneficiary,
             amount: self.amount,
             period: self.period,
             start_time: self.start_time,
@@ -129,7 +129,7 @@ contract SubscriptionPlugin: Plugin {
         self.reserve_at_most(Coins.nanotons(67_108_864));
 
         send(WalletBalance)
-        self.benefeciary.fallback(
+        self.beneficiary.fallback(
             msg.bounceable: false,
             msg.extra: self.extra(),
         );
@@ -137,7 +137,7 @@ contract SubscriptionPlugin: Plugin {
 
     fn send_destructured_message() {
         send(DestructSelf)
-        self.benefeciary.destruct(
+        self.beneficiary.destruct(
             msg.bounceable: false,
             msg.extra: self.extra(),
         );
