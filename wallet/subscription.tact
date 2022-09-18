@@ -15,15 +15,15 @@ interface Wallet {
     internal remove_plugin#64737472(query_id: Uint64, msg.sender: Plugin);
 }
 
-interface Beneficiary {
-    internal destruct#64737472(msg.sender: Plugin);
-    internal fallback#756e6b77(msg.sender: Plugin);
-    internal subscription#73756273(msg.sender: Plugin);
+interface SubscriptionReceiver {
+    internal subscription_destroyed#64737472(msg.sender: Plugin);
+    internal subscription_paid#73756273(msg.sender: Plugin);
+    internal subscription_fallback#756e6b77(msg.sender: Plugin);
 }
 
 contract SubscriptionPlugin: Plugin {
     var wallet: Wallet;
-    var beneficiary: Beneficiary;
+    var beneficiary: SubscriptionReceiver;
     var amount: Coins;
     var period: Uint32;
     var start_time: Uint32;
@@ -48,9 +48,9 @@ contract SubscriptionPlugin: Plugin {
                 msg.bounceable: false,
             );
 
-            self.send_destructured_message();
+            self.self_destroy();
         } else if msg.sender == self.wallet {
-            self.send_destructured_message();
+            self.self_destroy();
         } else {
             self.send_fallback_message();
         }
@@ -71,7 +71,7 @@ contract SubscriptionPlugin: Plugin {
             self.failed_attempts = 0;
 
             send(CarryMessageBalance) 
-            self.beneficiary.subscription(
+            self.beneficiary.subscription_paid(
                 msg.bounceable: false,
                 msg.extra: self.extra(),
             );
@@ -95,7 +95,7 @@ contract SubscriptionPlugin: Plugin {
                 msg.bounceable: false,
             );
 
-            self.send_destructured_message();
+            self.self_destroy();
         } else {
             let amount_gas = Gas.units(15_000, workchain: self.wallet.workchain())
                 + self.blockchain(msg.sender.wc()).short_msg_fwd_fee();
@@ -129,15 +129,15 @@ contract SubscriptionPlugin: Plugin {
         self.reserve_at_most(Coins.nanotons(67_108_864));
 
         send(WalletBalance)
-        self.beneficiary.fallback(
+        self.beneficiary.subscription_fallback(
             msg.bounceable: false,
             msg.extra: self.extra(),
         );
     }
 
-    fn send_destructured_message() {
+    fn self_destroy() {
         send(DestructSelf)
-        self.beneficiary.destruct(
+        self.beneficiary.subscription_destroyed(
             msg.bounceable: false,
             msg.extra: self.extra(),
         );

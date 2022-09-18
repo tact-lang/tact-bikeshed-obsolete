@@ -129,7 +129,7 @@ contract JettonImpl: Jetton {
     }
 
     fn compute_wallet_address(owner: Address) -> Address {
-        Jetton.init(owner, self.master, self.wallet_code).address()
+        JettonImpl.init(owner, self.master, self.wallet_code).address()
     }
 
     get wallet_data() -> WalletData {
