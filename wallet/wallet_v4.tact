@@ -63,7 +63,7 @@ contract Wallet {
         }
     }
 
-    external simple_transfer#0(messages: List[(Cell, Sendmode)]) -> Slice {
+    external simple_transfer#00(messages: List[(Cell, Sendmode)]) -> Slice {
         for (msg, flags) in messages {
             send_raw_msg(msg, flags);
         }
@@ -87,12 +87,12 @@ contract Wallet {
         self.plugins.insert(address);
     }
 
-    external install_plugin#2(plugin: Plugin, amount: Coins, query_id: Uint64) {
+    external install_plugin#02(plugin: Plugin, amount: Coins, query_id: Uint64) {
         self.plugins.insert(plugin);
         send(PayFee + IgnoreErrors) plugin.notify_installed(query_id, msg.amount: balance);
     }
 
-    external remove_plugin#3(plugin: Plugin, query_id: Uint64) {
+    external remove_plugin#03(plugin: Plugin, query_id: Uint64) {
         self.plugins.remove(plugin);
         send(PayFee + IgnoreErrors) plugin.notify_removed(query_id);
     }
